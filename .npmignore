@@ -1,0 +1,40 @@
+# Source control
+.git/
+.gitignore
+
+# Source files (publish dist only)
+src/
+tsconfig.json
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Claude settings
+.claude/
+
+# Lock files
+package-lock.json
+pnpm-lock.yaml
+
+# Development files
+*.md
+!README.md
+
+# Test files
+test/
+tests/
+__tests__/
+*.test.ts
+*.spec.ts
+*.test.js
+*.spec.js
+
+# TypeScript cache
+*.tsbuildinfo

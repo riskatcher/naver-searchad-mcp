@@ -1,0 +1,56 @@
+{
+  "name": "@packative/naver-searchad-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MCP server for Naver SearchAd API - manage campaigns, ad groups, keywords, and retrieve performance statistics",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "naver-searchad-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "pnpm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "claude",
+    "mcp",
+    "model-context-protocol",
+    "naver",
+    "searchad",
+    "advertising",
+    "ppc",
+    "korea"
+  ],
+  "author": "Provotive Co., Ltd",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/packative/naver-searchad-mcp"
+  },
+  "homepage": "https://github.com/packative/naver-searchad-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/packative/naver-searchad-mcp/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.2",
+    "axios": "^1.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
