@@ -262,6 +262,13 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Contributing
 
+We use [Conventional Commits](https://www.conventionalcommits.org/) for automatic versioning and changelog generation.
+
+- **`development`** branch for ongoing work
+- **`master`** branch is protected - merging triggers automatic releases
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
 Issues and pull requests are welcome on [GitHub](https://github.com/packative/naver-searchad-mcp).
 
 ---
