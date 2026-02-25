@@ -130,4 +130,95 @@ describe("fetchWithAuth", () => {
       })
     );
   });
+
+  // Bug #1 fix: signature should be computed over path only, not query string
+  it("should strip query string from path for signature and URL", async () => {
+    const mockResponse = { data: [] };
+    mockedAxios.mockResolvedValueOnce(mockResponse);
+
+    await fetchWithAuth("/ncc/keywords?nccAdgroupId=grp-123");
+
+    expect(mockedAxios).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "GET",
+        url: "https://api.naver.com/ncc/keywords",
+        params: expect.objectContaining({
+          nccAdgroupId: "grp-123",
+        }),
+      })
+    );
+  });
+
+  // Bug #7 fix: data should not be included for GET requests
+  it("should not include data field for GET requests", async () => {
+    const mockResponse = { data: [] };
+    mockedAxios.mockResolvedValueOnce(mockResponse);
+
+    await fetchWithAuth("/ncc/campaigns", "GET");
+
+    const callArgs = mockedAxios.mock.calls[0][0] as Record<string, unknown>;
+    expect(callArgs).not.toHaveProperty("data");
+  });
+
+  it("should not include data field for DELETE requests", async () => {
+    const mockResponse = { data: { success: true } };
+    mockedAxios.mockResolvedValueOnce(mockResponse);
+
+    await fetchWithAuth("/ncc/campaigns/123", "DELETE");
+
+    const callArgs = mockedAxios.mock.calls[0][0] as Record<string, unknown>;
+    expect(callArgs).not.toHaveProperty("data");
+  });
+
+  it("should include data field for PUT requests", async () => {
+    const mockResponse = { data: { id: "1" } };
+    const putData = { name: "Updated Campaign" };
+    mockedAxios.mockResolvedValueOnce(mockResponse);
+
+    await fetchWithAuth("/ncc/campaigns/123", "PUT", putData);
+
+    expect(mockedAxios).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "PUT",
+        data: putData,
+      })
+    );
+  });
+
+  // Bug #8 fix: query params should be properly handled via axios params
+  it("should pass explicit params via axios params config", async () => {
+    const mockResponse = { data: [] };
+    mockedAxios.mockResolvedValueOnce(mockResponse);
+
+    await fetchWithAuth("/ncc/adgroups", "GET", undefined, {
+      nccCampaignId: "cmp-123",
+    });
+
+    expect(mockedAxios).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "https://api.naver.com/ncc/adgroups",
+        params: expect.objectContaining({
+          nccCampaignId: "cmp-123",
+        }),
+      })
+    );
+  });
+
+  it("should merge inline query params with explicit params", async () => {
+    const mockResponse = { data: [] };
+    mockedAxios.mockResolvedValueOnce(mockResponse);
+
+    await fetchWithAuth("/ncc/keywords?nccAdgroupId=grp-123", "GET", undefined, {
+      extra: "value",
+    });
+
+    expect(mockedAxios).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          nccAdgroupId: "grp-123",
+          extra: "value",
+        }),
+      })
+    );
+  });
 });
