@@ -5,28 +5,82 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { fetchWithAuth } from "./utils/fetchWithAuth.js";
-import type {
-  Campaign,
-  AdGroup,
-  Keyword,
-  Stats,
-  CampaignWithStats,
-  CreateCampaignArgs,
-  DeleteCampaignArgs,
-  ListAdgroupsArgs,
-  GetAdgroupArgs,
-  CreateAdgroupArgs,
-  ListKeywordsArgs,
-  CreateKeywordArgs,
-  GetStatsArgs,
-  GetCampaignStatsArgs,
-} from "./types.js";
 
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
+
+// Import all tool modules
+import * as campaignTools from "./tools/campaigns.js";
+import * as adgroupTools from "./tools/adgroups.js";
+import * as keywordTools from "./tools/keywords.js";
+import * as adTools from "./tools/ads.js";
+import * as statsTools from "./tools/stats.js";
+import * as channelTools from "./tools/channels.js";
+import * as bizmoneyTools from "./tools/bizmoney.js";
+import * as keywordToolTools from "./tools/keyword-tool.js";
+import * as adExtensionTools from "./tools/ad-extensions.js";
+import * as negativeKeywordTools from "./tools/negative-keywords.js";
+import * as labelTools from "./tools/labels.js";
+import * as miscTools from "./tools/misc.js";
+
+import type { ToolModule, PermissionMode } from "./types/common.js";
+import { PERMISSION_ALLOWED } from "./types/common.js";
+
+// Parse permission mode from CLI args (default: ro for safety)
+function parsePermissionMode(): PermissionMode {
+  const args = process.argv.slice(2);
+  if (args.includes("--rwd")) return "rwd";
+  if (args.includes("--rw")) return "rw";
+  if (args.includes("--ro")) return "ro";
+  return "ro";
+}
+
+const permissionMode = parsePermissionMode();
+const allowedLevels = PERMISSION_ALLOWED[permissionMode];
+
+// Aggregate all tool modules
+const toolModules: ToolModule[] = [
+  campaignTools,
+  adgroupTools,
+  keywordTools,
+  adTools,
+  statsTools,
+  channelTools,
+  bizmoneyTools,
+  keywordToolTools,
+  adExtensionTools,
+  negativeKeywordTools,
+  labelTools,
+  miscTools,
+];
+
+// Collect all tool definitions, filtered by permission mode
+const allToolDefinitions = toolModules
+  .flatMap((m) => m.toolDefinitions)
+  .filter((t) => allowedLevels.includes(t.accessLevel));
+
+// Build a set of allowed tool names for fast runtime lookup
+const allowedToolNames = new Set(allToolDefinitions.map((t) => t.name));
+
+// Build a map of tool name -> accessLevel for error messages
+const toolAccessLevels = new Map(
+  toolModules
+    .flatMap((m) => m.toolDefinitions)
+    .map((t) => [t.name, t.accessLevel])
+);
+
+const MODE_LABELS: Record<PermissionMode, string> = {
+  ro: "READ-ONLY (--ro)",
+  rw: "READ-WRITE (--rw)",
+  rwd: "READ-WRITE-DELETE (--rwd)",
+};
+
+// Create the MCP server
 const server = new Server(
   {
     name: "@packative/naver-searchad-mcp",
-    version: "1.0.0",
+    version: pkg.version,
   },
   {
     capabilities: {
@@ -35,469 +89,66 @@ const server = new Server(
   }
 );
 
-// Define all tools
-const tools = [
-  {
-    name: "list_campaigns",
-    description: "List all Naver SearchAd campaigns",
-    inputSchema: {
-      type: "object" as const,
-      properties: {},
-      required: [],
-    },
-  },
-  {
-    name: "create_campaign",
-    description: "Create a new Naver SearchAd campaign",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        name: {
-          type: "string",
-          description: "Campaign name",
-        },
-        campaignTp: {
-          type: "string",
-          description: "Campaign type (e.g., WEB_SITE, SHOPPING)",
-        },
-        customerId: {
-          type: "string",
-          description: "Customer ID",
-        },
-        dailyBudget: {
-          type: "number",
-          description: "Daily budget in KRW",
-        },
-        deliveryMethod: {
-          type: "string",
-          description: "Delivery method (STANDARD or ACCELERATED)",
-        },
-      },
-      required: ["name", "campaignTp"],
-    },
-  },
-  {
-    name: "delete_campaign",
-    description: "Delete a Naver SearchAd campaign",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        campaignId: {
-          type: "string",
-          description: "Campaign ID to delete",
-        },
-      },
-      required: ["campaignId"],
-    },
-  },
-  {
-    name: "list_adgroups",
-    description: "List all ad groups, optionally filtered by campaign",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        campaignId: {
-          type: "string",
-          description: "Optional: Campaign ID to filter ad groups",
-        },
-      },
-      required: [],
-    },
-  },
-  {
-    name: "get_adgroup",
-    description: "Get details of a specific ad group",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        adgroupId: {
-          type: "string",
-          description: "Ad group ID",
-        },
-      },
-      required: ["adgroupId"],
-    },
-  },
-  {
-    name: "create_adgroup",
-    description: "Create a new ad group within a campaign",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        nccCampaignId: {
-          type: "string",
-          description: "Campaign ID to create ad group in",
-        },
-        name: {
-          type: "string",
-          description: "Ad group name",
-        },
-        pcChannelId: {
-          type: "string",
-          description: "PC channel ID",
-        },
-        mobileChannelId: {
-          type: "string",
-          description: "Mobile channel ID",
-        },
-        bidAmt: {
-          type: "number",
-          description: "Bid amount in KRW",
-        },
-      },
-      required: ["nccCampaignId", "name"],
-    },
-  },
-  {
-    name: "list_keywords",
-    description: "List all keywords in an ad group",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        adgroupId: {
-          type: "string",
-          description: "Ad group ID",
-        },
-      },
-      required: ["adgroupId"],
-    },
-  },
-  {
-    name: "create_keyword",
-    description: "Add a keyword to an ad group",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        adgroupId: {
-          type: "string",
-          description: "Ad group ID",
-        },
-        keyword: {
-          type: "string",
-          description: "Keyword text",
-        },
-        bidAmt: {
-          type: "number",
-          description: "Bid amount in KRW",
-        },
-      },
-      required: ["adgroupId", "keyword"],
-    },
-  },
-  {
-    name: "get_stats",
-    description:
-      "Get performance statistics for campaigns, ad groups, or keywords. Returns impressions, clicks, cost, conversions, etc.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        id: {
-          type: "string",
-          description: "Single ID (campaign, adgroup, or keyword ID)",
-        },
-        ids: {
-          type: "array",
-          items: { type: "string" },
-          description: "Multiple IDs to query at once",
-        },
-        fields: {
-          type: "array",
-          items: { type: "string" },
-          description:
-            "Metrics to retrieve: impCnt, clkCnt, salesAmt, ctr, cpc, ccnt, crto, convAmt, ror, cpConv, avgRnk",
-        },
-        datePreset: {
-          type: "string",
-          description:
-            "Predefined date range: today, yesterday, last7days, last30days, lastweek, lastmonth, lastquarter",
-        },
-        timeRange: {
-          type: "object",
-          properties: {
-            since: { type: "string", description: "Start date (YYYY-MM-DD)" },
-            until: { type: "string", description: "End date (YYYY-MM-DD)" },
-          },
-          description: "Custom date range (use instead of datePreset)",
-        },
-        timeIncrement: {
-          type: "string",
-          description: "Time granularity: 1 (daily) or allDays (summary)",
-        },
-        breakdown: {
-          type: "string",
-          description:
-            "Breakdown dimension: pcMblTp (device), dayw (day of week), hh24 (hour), regnNo (region)",
-        },
-      },
-      required: [],
-    },
-  },
-  {
-    name: "get_campaign_stats",
-    description: "Get performance statistics for all active campaigns",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        startDate: {
-          type: "string",
-          description: "Start date (YYYY-MM-DD)",
-        },
-        endDate: {
-          type: "string",
-          description: "End date (YYYY-MM-DD)",
-        },
-        datePreset: {
-          type: "string",
-          description:
-            "Or use preset: today, yesterday, last7days, last30days, lastweek, lastmonth, lastquarter",
-        },
-      },
-      required: [],
-    },
-  },
-];
-
-// Handle list tools request
+// Handle list tools request - only return tools allowed by permission mode
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return { tools };
+  return { tools: allToolDefinitions };
 });
 
-// Handle tool calls
+// Handle tool calls - delegate to the appropriate module with permission check
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args = {} } = request.params;
 
-  try {
-    let result: unknown;
-
-    switch (name) {
-      case "list_campaigns": {
-        const response = await fetchWithAuth<Campaign[]>("/ncc/campaigns");
-        result = response.data;
-        break;
-      }
-
-      case "create_campaign": {
-        const typedArgs = args as unknown as CreateCampaignArgs;
-        const campaign = {
-          name: typedArgs.name,
-          campaignTp: typedArgs.campaignTp,
-          customerId: typedArgs.customerId,
-          dailyBudget: typedArgs.dailyBudget,
-          deliveryMethod: typedArgs.deliveryMethod,
-        };
-        const response = await fetchWithAuth<Campaign>(
-          "/ncc/campaigns",
-          "POST",
-          campaign
-        );
-        result = response.data;
-        break;
-      }
-
-      case "delete_campaign": {
-        const typedArgs = args as unknown as DeleteCampaignArgs;
-        const response = await fetchWithAuth<Campaign>(
-          `/ncc/campaigns/${typedArgs.campaignId}`,
-          "DELETE"
-        );
-        result = response.data;
-        break;
-      }
-
-      case "list_adgroups": {
-        const typedArgs = args as unknown as ListAdgroupsArgs;
-        const endpoint = typedArgs.campaignId
-          ? `/ncc/adgroups?nccCampaignId=${typedArgs.campaignId}`
-          : `/ncc/adgroups`;
-        const response = await fetchWithAuth<AdGroup[]>(endpoint);
-        result = response.data;
-        break;
-      }
-
-      case "get_adgroup": {
-        const typedArgs = args as unknown as GetAdgroupArgs;
-        const response = await fetchWithAuth<AdGroup>(
-          `/ncc/adgroups/${typedArgs.adgroupId}`
-        );
-        result = response.data;
-        break;
-      }
-
-      case "create_adgroup": {
-        const typedArgs = args as unknown as CreateAdgroupArgs;
-        const adgroup = {
-          nccCampaignId: typedArgs.nccCampaignId,
-          name: typedArgs.name,
-          pcChannelId: typedArgs.pcChannelId,
-          mobileChannelId: typedArgs.mobileChannelId,
-          bidAmt: typedArgs.bidAmt,
-        };
-        const response = await fetchWithAuth<AdGroup>(
-          "/ncc/adgroups",
-          "POST",
-          adgroup
-        );
-        result = response.data;
-        break;
-      }
-
-      case "list_keywords": {
-        const typedArgs = args as unknown as ListKeywordsArgs;
-        const response = await fetchWithAuth<Keyword[]>(
-          `/ncc/keywords?nccAdgroupId=${typedArgs.adgroupId}`
-        );
-        result = response.data;
-        break;
-      }
-
-      case "create_keyword": {
-        const typedArgs = args as unknown as CreateKeywordArgs;
-        const keyword = {
-          keyword: typedArgs.keyword,
-          bidAmt: typedArgs.bidAmt,
-        };
-        const response = await fetchWithAuth<Keyword>(
-          `/ncc/keywords?nccAdgroupId=${typedArgs.adgroupId}`,
-          "POST",
-          keyword
-        );
-        result = response.data;
-        break;
-      }
-
-      case "get_stats": {
-        const typedArgs = args as unknown as GetStatsArgs;
-        const params = new URLSearchParams();
-
-        if (typedArgs.id) {
-          params.append("id", typedArgs.id);
-        }
-        if (typedArgs.ids && typedArgs.ids.length > 0) {
-          params.append("ids", JSON.stringify(typedArgs.ids));
-        }
-
-        // Fields - default to common metrics
-        const fields = typedArgs.fields || [
-          "impCnt",
-          "clkCnt",
-          "salesAmt",
-          "ctr",
-          "cpc",
-          "ccnt",
-        ];
-        params.append("fields", JSON.stringify(fields));
-
-        // Date range
-        if (typedArgs.timeRange) {
-          params.append("timeRange", JSON.stringify(typedArgs.timeRange));
-        } else if (typedArgs.datePreset) {
-          params.append("datePreset", typedArgs.datePreset);
-        } else {
-          params.append("datePreset", "last30days");
-        }
-
-        // Time increment
-        params.append("timeIncrement", typedArgs.timeIncrement || "allDays");
-
-        // Breakdown
-        if (typedArgs.breakdown) {
-          params.append("breakdown", typedArgs.breakdown);
-        }
-
-        const response = await fetchWithAuth<Stats[]>(
-          `/stats?${params.toString()}`
-        );
-        result = response.data;
-        break;
-      }
-
-      case "get_campaign_stats": {
-        const typedArgs = args as unknown as GetCampaignStatsArgs;
-
-        // First get all campaigns
-        const campaignsResponse =
-          await fetchWithAuth<Campaign[]>("/ncc/campaigns");
-        const campaigns = campaignsResponse.data;
-
-        // Filter to ELIGIBLE campaigns only
-        const activeCampaigns = campaigns.filter(
-          (c) => c.status === "ELIGIBLE"
-        );
-        const campaignIds = activeCampaigns.map((c) => c.nccCampaignId);
-
-        if (campaignIds.length === 0) {
-          result = { message: "No active campaigns found", campaigns: [] };
-          break;
-        }
-
-        // Build stats query
-        const params = new URLSearchParams();
-        params.append("ids", JSON.stringify(campaignIds));
-        params.append(
-          "fields",
-          JSON.stringify([
-            "impCnt",
-            "clkCnt",
-            "salesAmt",
-            "ctr",
-            "cpc",
-            "ccnt",
-            "crto",
-            "convAmt",
-          ])
-        );
-
-        if (typedArgs.startDate && typedArgs.endDate) {
-          params.append(
-            "timeRange",
-            JSON.stringify({
-              since: typedArgs.startDate,
-              until: typedArgs.endDate,
-            })
-          );
-        } else if (typedArgs.datePreset) {
-          params.append("datePreset", typedArgs.datePreset);
-        } else {
-          params.append("datePreset", "last30days");
-        }
-
-        params.append("timeIncrement", "allDays");
-
-        const statsResponse = await fetchWithAuth<Stats[]>(
-          `/stats?${params.toString()}`
-        );
-
-        // Merge campaign info with stats
-        const statsMap: Record<string, Stats> = {};
-        if (Array.isArray(statsResponse.data)) {
-          statsResponse.data.forEach((stat) => {
-            statsMap[stat.id] = stat;
-          });
-        }
-
-        result = activeCampaigns.map(
-          (campaign): CampaignWithStats => ({
-            ...campaign,
-            stats: statsMap[campaign.nccCampaignId] || null,
-          })
-        );
-        break;
-      }
-
-      default:
-        throw new Error(`Unknown tool: ${name}`);
+  // Permission gate: block tools not allowed in current mode
+  if (!allowedToolNames.has(name)) {
+    const level = toolAccessLevels.get(name);
+    if (level) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Error: Tool "${name}" requires "${level}" permission, but the server is running in ${MODE_LABELS[permissionMode]} mode. Restart with a higher permission flag to use this tool.`,
+          },
+        ],
+        isError: true,
+      };
     }
-
     return {
       content: [
         {
           type: "text" as const,
-          text: JSON.stringify(result, null, 2),
+          text: `Error: Unknown tool: ${name}`,
         },
       ],
+      isError: true,
+    };
+  }
+
+  try {
+    // Try each module until one handles the tool
+    for (const mod of toolModules) {
+      const result = await mod.handleTool(
+        name,
+        args as Record<string, unknown>
+      );
+      if (result !== null) {
+        return result;
+      }
+    }
+
+    // No module handled this tool
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Error: Unknown tool: ${name}`,
+        },
+      ],
+      isError: true,
     };
   } catch (error) {
-    const err = error as Error & { response?: { data?: { message?: string } } };
+    const err = error as Error & {
+      response?: { data?: { message?: string } };
+    };
     const errorMessage = err.response?.data?.message || err.message;
     return {
       content: [
@@ -515,7 +166,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Naver SearchAd MCP server running on stdio");
+
+  const readCount = allToolDefinitions.filter((t) => t.accessLevel === "read").length;
+  const writeCount = allToolDefinitions.filter((t) => t.accessLevel === "write").length;
+  const deleteCount = allToolDefinitions.filter((t) => t.accessLevel === "delete").length;
+
+  console.error(
+    `Naver SearchAd MCP server v${pkg.version} running on stdio`
+  );
+  console.error(
+    `Permission mode: ${MODE_LABELS[permissionMode]} | Tools available: ${allToolDefinitions.length} (${readCount} read, ${writeCount} write, ${deleteCount} delete)`
+  );
 }
 
 main().catch((error: Error) => {

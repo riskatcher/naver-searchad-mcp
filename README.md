@@ -9,7 +9,7 @@
 
 # @packative/naver-searchad-mcp
 
-An MCP (Model Context Protocol) server for the Naver SearchAd API. Manage campaigns, ad groups, keywords, and retrieve performance statistics directly from Claude Desktop or any MCP-compatible client.
+An MCP (Model Context Protocol) server for the Naver SearchAd API. Manage campaigns, ad groups, ads, keywords, and retrieve performance statistics directly from Claude Desktop or any MCP-compatible client.
 
 ## Credits
 
@@ -17,12 +17,21 @@ This project is a fork of [ND-SPACE/naver-searchad-mcp](https://github.com/ND-SP
 
 ## Features
 
-- **Campaign Management**: List, create, and delete campaigns
-- **Ad Group Management**: List, get details, and create ad groups
-- **Keyword Management**: List and add keywords to ad groups
-- **Performance Statistics**: Retrieve detailed stats with flexible date ranges and breakdowns
-- **Active Campaign Filtering**: Automatically filters to show only active (ELIGIBLE) campaigns
-- **TypeScript**: Fully typed for better developer experience
+- **47 Tools** covering the full Naver SearchAd API
+- **Campaign Management**: List, get, create, update, and delete campaigns
+- **Ad Group Management**: Full CRUD for ad groups
+- **Ad/Creative Management**: List, get, create, update, and delete ads
+- **Keyword Management**: Full CRUD for keywords
+- **Negative Keywords**: Manage negative keywords at campaign or ad group level
+- **Ad Extensions**: Manage sitelinks, callouts, and other ad extensions
+- **Keyword Tool**: Get keyword suggestions, search volume, and bid estimates
+- **Performance Statistics**: Detailed stats with flexible date ranges, breakdowns, and async reports
+- **Bizmoney/Budget**: Check account balance, transaction history, and cost breakdowns
+- **Labels**: Organize campaigns, ad groups, and other entities
+- **Business Channels**: List and inspect business channels
+- **Account & Quality**: Member info, keyword quality index, IP exclusions
+- **Permission Modes**: `--ro`, `--rw`, `--rwd` flags to control access (read-only by default)
+- **TypeScript**: Fully typed with modular architecture
 
 ## Installation
 
@@ -48,6 +57,31 @@ The server requires the following environment variables:
 | `NAVER_SIGN_KEY` | Your Naver SearchAd secret key for signing requests |
 | `NAVER_CUSTOMER_ID` | Your Naver advertiser customer ID |
 
+### Permission Modes
+
+The server supports three permission modes to protect against accidental destructive operations. **The default is read-only.**
+
+| Flag | Mode | Tools | Description |
+|------|------|-------|-------------|
+| `--ro` | Read-only | 26 | List, get, stats, and download operations only (default) |
+| `--rw` | Read-write | 39 | Adds create and update operations |
+| `--rwd` | Read-write-delete | 47 | Full access including delete operations |
+
+Pass the flag as a CLI argument:
+
+```bash
+# Read-only (default, safest)
+naver-searchad-mcp
+
+# Allow creating and updating
+naver-searchad-mcp --rw
+
+# Full access including deletes
+naver-searchad-mcp --rwd
+```
+
+If a tool is called that isn't allowed by the current permission mode, the server returns a clear error message indicating which mode is required.
+
 ### Claude Desktop Setup
 
 Add the following to your Claude Desktop configuration file:
@@ -60,7 +94,7 @@ Add the following to your Claude Desktop configuration file:
   "mcpServers": {
     "naver-searchad": {
       "command": "npx",
-      "args": ["-y", "@packative/naver-searchad-mcp"],
+      "args": ["-y", "@packative/naver-searchad-mcp", "--rw"],
       "env": {
         "NAVER_API_KEY": "your-api-key",
         "NAVER_SIGN_KEY": "your-secret-key",
@@ -80,7 +114,7 @@ Add to your Claude Code settings:
   "mcpServers": {
     "naver-searchad": {
       "command": "npx",
-      "args": ["-y", "@packative/naver-searchad-mcp"],
+      "args": ["-y", "@packative/naver-searchad-mcp", "--rw"],
       "env": {
         "NAVER_API_KEY": "your-api-key",
         "NAVER_SIGN_KEY": "your-secret-key",
@@ -91,112 +125,120 @@ Add to your Claude Code settings:
 }
 ```
 
-## Available Tools
+## Available Tools (47)
 
 ### Campaign Tools
 
-#### `list_campaigns`
-List all Naver SearchAd campaigns.
-
-#### `create_campaign`
-Create a new campaign.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `name` | string | Yes | Campaign name |
-| `campaignTp` | string | Yes | Campaign type (e.g., `WEB_SITE`, `SHOPPING`) |
-| `customerId` | string | No | Customer ID |
-| `dailyBudget` | number | No | Daily budget in KRW |
-| `deliveryMethod` | string | No | `STANDARD` or `ACCELERATED` |
-
-#### `delete_campaign`
-Delete a campaign.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `campaignId` | string | Yes | Campaign ID to delete |
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `list_campaigns` | read | List all campaigns |
+| `get_campaign` | read | Get details of a specific campaign |
+| `create_campaign` | write | Create a new campaign |
+| `update_campaign` | write | Update a campaign (name, budget, delivery method, pause/enable) |
+| `delete_campaign` | delete | Delete a campaign |
 
 ### Ad Group Tools
 
-#### `list_adgroups`
-List all ad groups, optionally filtered by campaign.
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `list_adgroups` | read | List ad groups, optionally filtered by campaign |
+| `get_adgroup` | read | Get details of a specific ad group |
+| `create_adgroup` | write | Create a new ad group in a campaign |
+| `update_adgroup` | write | Update an ad group (bid, budget, pause/enable) |
+| `delete_adgroup` | delete | Delete an ad group |
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `campaignId` | string | No | Filter by campaign ID |
+### Ad (Creative) Tools
 
-#### `get_adgroup`
-Get details of a specific ad group.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `adgroupId` | string | Yes | Ad group ID |
-
-#### `create_adgroup`
-Create a new ad group.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `nccCampaignId` | string | Yes | Parent campaign ID |
-| `name` | string | Yes | Ad group name |
-| `pcChannelId` | string | No | PC channel ID |
-| `mobileChannelId` | string | No | Mobile channel ID |
-| `bidAmt` | number | No | Bid amount in KRW |
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `list_ads` | read | List all ads in an ad group |
+| `get_ad` | read | Get details of a specific ad |
+| `create_ad` | write | Create a new ad in an ad group |
+| `update_ad` | write | Update an ad (creative content, pause/enable) |
+| `delete_ad` | delete | Delete an ad |
 
 ### Keyword Tools
 
-#### `list_keywords`
-List all keywords in an ad group.
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `list_keywords` | read | List all keywords in an ad group |
+| `get_keyword` | read | Get details of a specific keyword |
+| `create_keyword` | write | Add a keyword to an ad group |
+| `update_keyword` | write | Update a keyword (bid amount, pause/enable) |
+| `delete_keyword` | delete | Delete a keyword |
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `adgroupId` | string | Yes | Ad group ID |
+### Negative Keyword Tools
 
-#### `create_keyword`
-Add a keyword to an ad group.
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `list_negative_keywords` | read | List negative keywords for an ad group or campaign |
+| `create_negative_keywords` | write | Add negative keywords (EXACT or PHRASE match) |
+| `delete_negative_keywords` | delete | Delete negative keywords by IDs |
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `adgroupId` | string | Yes | Ad group ID |
-| `keyword` | string | Yes | Keyword text |
-| `bidAmt` | number | No | Bid amount in KRW |
+### Ad Extension Tools
+
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `list_ad_extensions` | read | List ad extensions for an ad group |
+| `create_ad_extension` | write | Create an ad extension (sitelink, callout, etc.) |
+| `delete_ad_extension` | delete | Delete an ad extension |
 
 ### Statistics Tools
 
-#### `get_stats`
-Get performance statistics for campaigns, ad groups, or keywords.
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `get_stats` | read | Get performance stats (impressions, clicks, cost, conversions, etc.) |
+| `get_campaign_stats` | read | Get stats for all active campaigns with campaign details |
+| `create_stat_report` | write | Create an async stat report job |
+| `get_stat_report` | read | Check status of an async report job |
+| `download_stat_report` | read | Download a completed stat report |
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | string | No | Single ID to query |
-| `ids` | array | No | Multiple IDs to query |
-| `fields` | array | No | Metrics to retrieve (default: `impCnt`, `clkCnt`, `salesAmt`, `ctr`, `cpc`, `ccnt`) |
-| `datePreset` | string | No | `today`, `yesterday`, `last7days`, `last30days`, `lastweek`, `lastmonth`, `lastquarter` |
-| `timeRange` | object | No | Custom date range with `since` and `until` (YYYY-MM-DD) |
-| `timeIncrement` | string | No | `1` (daily) or `allDays` (summary) |
-| `breakdown` | string | No | `pcMblTp` (device), `dayw` (day of week), `hh24` (hour), `regnNo` (region) |
+**Available metrics:** `impCnt` (impressions), `clkCnt` (clicks), `salesAmt` (cost), `ctr` (CTR), `cpc` (CPC), `ccnt` (conversions), `crto` (conversion rate), `convAmt` (conversion value), `ror` (ROAS), `cpConv` (cost per conversion), `avgRnk` (avg rank)
 
-**Available metrics:**
-- `impCnt` - Impressions
-- `clkCnt` - Clicks
-- `salesAmt` - Cost/Spend
-- `ctr` - Click-through rate
-- `cpc` - Cost per click
-- `ccnt` - Conversions
-- `crto` - Conversion rate
-- `convAmt` - Conversion value
-- `ror` - Return on ad spend
-- `cpConv` - Cost per conversion
-- `avgRnk` - Average rank
+**Date presets:** `today`, `yesterday`, `last7days`, `last30days`, `lastweek`, `lastmonth`, `lastquarter`
 
-#### `get_campaign_stats`
-Get performance statistics for all active campaigns.
+**Breakdowns:** `pcMblTp` (device), `dayw` (day of week), `hh24` (hour), `regnNo` (region)
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `startDate` | string | No | Start date (YYYY-MM-DD) |
-| `endDate` | string | No | End date (YYYY-MM-DD) |
-| `datePreset` | string | No | Use preset instead of custom dates |
+### Keyword Research & Bid Estimate Tools
+
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `get_keyword_suggestions` | read | Get keyword ideas with search volume, CTR, and competition data |
+| `get_estimate_performance` | read | Estimate impressions, clicks, and cost at given bid amounts |
+| `get_estimate_median_bid` | read | Get median bid to appear on first page |
+
+### Bizmoney (Budget) Tools
+
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `get_bizmoney` | read | Get current account balance |
+| `get_bizmoney_histories` | read | Get transaction history (charges, refunds) |
+| `get_bizmoney_cost` | read | Get cost breakdown by date |
+
+### Business Channel Tools
+
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `list_channels` | read | List all business channels |
+| `get_channel` | read | Get details of a specific channel |
+
+### Label Tools
+
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `list_labels` | read | List all labels |
+| `create_label` | write | Create a label (name + color) |
+| `delete_label` | delete | Delete a label |
+
+### Other Tools
+
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `get_member_info` | read | Get account/member information |
+| `get_quality_index` | read | Get keyword quality scores and improvement suggestions |
+| `list_ip_exclusions` | read | List blocked IPs for click fraud prevention |
+| `create_ip_exclusion` | write | Block an IP address |
+| `delete_ip_exclusion` | delete | Unblock an IP address |
 
 ## Usage Examples
 
@@ -213,6 +255,16 @@ Get performance statistics for all active campaigns.
 ### Create a new campaign
 ```
 "Create a new Naver SearchAd campaign called 'Summer Sale' with type WEB_SITE"
+```
+
+### Keyword research
+```
+"Find keyword suggestions for '패키지 디자인' with search volume data"
+```
+
+### Check account balance
+```
+"What's my current Naver SearchAd budget balance?"
 ```
 
 ### Get keyword statistics
@@ -249,6 +301,42 @@ pnpm typecheck
 
 # Build
 pnpm build
+```
+
+### Project Structure
+
+```
+src/
+  index.ts                  # Server setup, permission mode, tool registration
+  types/
+    common.ts               # Shared types (ToolDefinition, AccessLevel, PermissionMode)
+    campaigns.ts            # Campaign types
+    adgroups.ts             # Ad group types
+    keywords.ts             # Keyword types
+    ads.ts                  # Ad/creative types
+    stats.ts                # Stats & report types
+    channels.ts             # Channel types
+    bizmoney.ts             # Bizmoney types
+    keyword-tool.ts         # Keyword suggestion & estimate types
+    ad-extensions.ts        # Ad extension types
+    negative-keywords.ts    # Negative keyword types
+    labels.ts               # Label types
+    misc.ts                 # Member, quality index, IP exclusion types
+  tools/
+    campaigns.ts            # Campaign tool definitions & handlers
+    adgroups.ts             # Ad group tools
+    keywords.ts             # Keyword tools
+    ads.ts                  # Ad/creative tools
+    stats.ts                # Stats & report tools
+    channels.ts             # Channel tools
+    bizmoney.ts             # Bizmoney tools
+    keyword-tool.ts         # Keyword research & bid estimate tools
+    ad-extensions.ts        # Ad extension tools
+    negative-keywords.ts    # Negative keyword tools
+    labels.ts               # Label tools
+    misc.ts                 # Member, quality index, IP exclusion tools
+  utils/
+    fetchWithAuth.ts        # Authenticated HTTP client (HMAC-SHA256)
 ```
 
 ## Requirements
