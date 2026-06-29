@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/packative/naver-searchad-mcp/compare/naver-searchad-mcp-v1.2.0...naver-searchad-mcp-v1.3.0) (2026-02-25)
+
+
+### Features
+
+* expand to 47 tools with full API coverage, bug fixes, and permission modes ([4a73082](https://github.com/packative/naver-searchad-mcp/commit/4a73082211829437b7eebb92ff0e4d229c40e227))
+* full API coverage (47 tools), bug fixes, and permission modes ([dcceef9](https://github.com/packative/naver-searchad-mcp/commit/dcceef9008827bbc3f2698aada7d53c9f0990339))
+
 ## [1.2.0](https://github.com/packative/naver-searchad-mcp/compare/naver-searchad-mcp-v1.1.0...naver-searchad-mcp-v1.2.0) (2026-01-27)
 
 
