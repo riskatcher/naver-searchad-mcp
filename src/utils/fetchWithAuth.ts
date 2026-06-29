@@ -28,12 +28,16 @@ function generateSignature(
  * @param method - HTTP method
  * @param data - Request body (only sent for POST/PUT/PATCH)
  * @param params - Query parameters (passed via axios params config for proper encoding)
+ * @param responseType - Axios response type. Defaults to "json"; use "text" for
+ *   non-JSON payloads such as TSV report downloads so axios does not attempt to
+ *   JSON-parse the body.
  */
 export async function fetchWithAuth<T = unknown>(
   path: string,
   method: HttpMethod = "GET",
   data?: unknown,
-  params?: Record<string, string | string[] | number | boolean | undefined>
+  params?: Record<string, string | string[] | number | boolean | undefined>,
+  responseType?: "json" | "text" | "arraybuffer"
 ): Promise<ApiResponse<T>> {
   const apiKey = process.env.NAVER_API_KEY;
   const secretKey = process.env.NAVER_SIGN_KEY;
@@ -82,6 +86,10 @@ export async function fetchWithAuth<T = unknown>(
   }
   if (Object.keys(mergedParams).length > 0) {
     config.params = mergedParams;
+  }
+
+  if (responseType) {
+    config.responseType = responseType;
   }
 
   // Only include `data` for methods that support a request body (Bug #7 fix)

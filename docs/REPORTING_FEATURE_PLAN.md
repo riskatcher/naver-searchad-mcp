@@ -67,14 +67,18 @@ Notes for implementation:
 
 ## Phased tool plan
 
-### Phase 1 — `fetch_report_data` (read)
+### Phase 1 — `fetch_report_data` (read) ✅ DONE
 One tool that wraps "create + poll + download + parse" for a single report.
 
 - Input: `kind` ("stat"|"master"), `reportTp`/`item`, `statDt`/`fromTime`,
-  optional `limit`, optional `fields` projection.
-- Output: parsed rows as JSON (capped/paginated; `log` what was truncated).
-- This is the analog of hjsh200219's `fetch_raw_data` and unblocks everything
-  else. Highest priority.
+  optional `columns`, `limit`, `maxWaitSeconds`, `cleanup`.
+- Output: parsed rows as JSON (capped by `limit`; reports a `truncated` flag and
+  `totalRows`). Columns are positional (no header in Naver TSV); `columns` maps
+  cells to named fields.
+- Implemented in `src/tools/reports.ts` (`fetch_report_data`) on top of the
+  shared poll/download/parse helper `src/utils/reportJob.ts`, and
+  `fetchWithAuth` gained a `responseType` argument so it can pull the TSV body.
+- This is the analog of hjsh200219's `fetch_raw_data` and unblocks the rest.
 
 ### Phase 2 — `get_account_overview` (read)
 Aggregation convenience over Phase 1 + existing `get_stats`.

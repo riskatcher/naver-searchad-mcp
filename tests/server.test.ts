@@ -37,8 +37,8 @@ const allTools = toolModules.flatMap((m) => m.toolDefinitions);
 
 describe("MCP Server Tools", () => {
   describe("Tool definitions", () => {
-    it("should have 59 tools defined", () => {
-      expect(allTools).toHaveLength(59);
+    it("should have 60 tools defined", () => {
+      expect(allTools).toHaveLength(60);
     });
 
     it("should have unique tool names", () => {
@@ -219,16 +219,21 @@ describe("MCP Server Tools", () => {
     });
   });
 
-  describe("Master report tools (4)", () => {
+  describe("Master report tools (5)", () => {
     const tools = reportTools.toolDefinitions;
 
-    it("should have 4 master report tools", () => {
-      expect(tools).toHaveLength(4);
+    it("should have 5 master report tools", () => {
+      expect(tools).toHaveLength(5);
     });
 
     it("create_master_report should require item", () => {
       const tool = tools.find((t) => t.name === "create_master_report");
       expect(tool?.inputSchema.required).toContain("item");
+    });
+
+    it("fetch_report_data should require kind", () => {
+      const tool = tools.find((t) => t.name === "fetch_report_data");
+      expect(tool?.inputSchema.required).toContain("kind");
     });
   });
 
@@ -316,9 +321,9 @@ describe("Permission modes", () => {
     });
   });
 
-  it("should have 31 read tools", () => {
+  it("should have 32 read tools", () => {
     const readTools = allTools.filter((t) => t.accessLevel === "read");
-    expect(readTools).toHaveLength(31);
+    expect(readTools).toHaveLength(32);
   });
 
   it("should have 17 write tools", () => {
@@ -335,7 +340,7 @@ describe("Permission modes", () => {
     const allowed = PERMISSION_ALLOWED["ro"];
     expect(allowed).toEqual(["read"]);
     const filtered = allTools.filter((t) => allowed.includes(t.accessLevel));
-    expect(filtered).toHaveLength(31);
+    expect(filtered).toHaveLength(32);
     filtered.forEach((t) => expect(t.accessLevel).toBe("read"));
   });
 
@@ -343,7 +348,7 @@ describe("Permission modes", () => {
     const allowed = PERMISSION_ALLOWED["rw"];
     expect(allowed).toEqual(["read", "write"]);
     const filtered = allTools.filter((t) => allowed.includes(t.accessLevel));
-    expect(filtered).toHaveLength(48);
+    expect(filtered).toHaveLength(49);
     filtered.forEach((t) => expect(["read", "write"]).toContain(t.accessLevel));
   });
 
@@ -351,7 +356,7 @@ describe("Permission modes", () => {
     const allowed = PERMISSION_ALLOWED["rwd"];
     expect(allowed).toEqual(["read", "write", "delete"]);
     const filtered = allTools.filter((t) => allowed.includes(t.accessLevel));
-    expect(filtered).toHaveLength(59);
+    expect(filtered).toHaveLength(60);
   });
 
   it("delete tools should include all *delete* named tools", () => {

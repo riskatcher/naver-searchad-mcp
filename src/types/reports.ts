@@ -33,3 +33,22 @@ export interface GetMasterReportArgs {
 export interface DeleteMasterReportArgs {
   reportJobId: string;
 }
+
+export interface FetchReportDataArgs {
+  kind: "stat" | "master";
+  // Required when kind === "stat".
+  reportTp?: string;
+  statDt?: string;
+  // Required when kind === "master".
+  item?: string;
+  fromTime?: string;
+  // Optional names to map each positional TSV column onto an object.
+  columns?: string[];
+  // Maximum rows to return (default 1000).
+  limit?: number;
+  // Maximum seconds to wait for the job to build (default 60).
+  maxWaitSeconds?: number;
+  // Delete the report job after downloading to free the per-account slot
+  // (default true).
+  cleanup?: boolean;
+}

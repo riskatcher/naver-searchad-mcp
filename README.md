@@ -17,7 +17,7 @@ This project is a fork of [ND-SPACE/naver-searchad-mcp](https://github.com/ND-SP
 
 ## Features
 
-- **59 Tools** covering the full Naver SearchAd API
+- **60 Tools** covering the full Naver SearchAd API
 - **Campaign Management**: List, get, create, update, and delete campaigns
 - **Ad Group Management**: Full CRUD for ad groups, plus targeting inspection
 - **Ad/Creative Management**: List, get, create, update, and delete ads
@@ -28,6 +28,7 @@ This project is a fork of [ND-SPACE/naver-searchad-mcp](https://github.com/ND-SP
 - **Keyword Tool**: Get keyword suggestions, search volume, and bid estimates
 - **Performance Statistics**: Detailed stats with flexible date ranges, breakdowns, and async stat reports
 - **Master Reports**: Bulk entity (campaign/adgroup/keyword/ad/…) snapshots and delta exports
+- **One-shot Report Fetch**: `fetch_report_data` creates a report, waits for it, downloads the TSV, and returns parsed rows
 - **Bizmoney/Budget**: Check account balance, transaction history, and cost breakdowns
 - **Labels**: Organize campaigns, ad groups, and other entities
 - **Business Channels**: List, inspect, and create business channels
@@ -65,9 +66,9 @@ The server supports three permission modes to protect against accidental destruc
 
 | Flag | Mode | Tools | Description |
 |------|------|-------|-------------|
-| `--ro` | Read-only | 31 | List, get, stats, and download operations only (default) |
-| `--rw` | Read-write | 48 | Adds create and update operations |
-| `--rwd` | Read-write-delete | 59 | Full access including delete operations |
+| `--ro` | Read-only | 32 | List, get, stats, and download operations only (default) |
+| `--rw` | Read-write | 49 | Adds create and update operations |
+| `--rwd` | Read-write-delete | 60 | Full access including delete operations |
 
 Pass the flag as a CLI argument:
 
@@ -127,7 +128,7 @@ Add to your Claude Code settings:
 }
 ```
 
-## Available Tools (59)
+## Available Tools (60)
 
 ### Campaign Tools
 
@@ -219,6 +220,25 @@ Master reports are bulk TSV snapshots of account **entities** (campaigns, ad gro
 | `get_master_report` | read | Check status of a master report job and get its download URL |
 | `list_master_reports` | read | List all master report jobs |
 | `delete_master_report` | delete | Delete a master report job |
+| `fetch_report_data` | read | One-shot: create a stat/master report, wait for it, download the TSV, and return parsed rows |
+
+#### `fetch_report_data` (one-shot reporting)
+
+Instead of orchestrating `create_* → get_* → download_* → delete_*` yourself,
+`fetch_report_data` does the whole asynchronous flow in a single call: it creates
+the report job, polls until it is built, downloads the TSV result, parses it, and
+(by default) deletes the job to free the per-account slot.
+
+```
+"Fetch yesterday's AD stat report and summarize the top campaigns"
+"Pull a master report of all keywords (item=Keyword)"
+```
+
+Report files have **no header row** — columns are positional per the report
+type — so rows are returned as arrays of string cells by default. Pass a
+`columns` array to map them to named fields. Parameters: `kind` (`stat` or
+`master`), `reportTp`+`statDt` (for stat) or `item`+optional `fromTime` (for
+master), plus optional `columns`, `limit`, `maxWaitSeconds`, and `cleanup`.
 
 **Available metrics:** `impCnt` (impressions), `clkCnt` (clicks), `salesAmt` (cost), `ctr` (CTR), `cpc` (CPC), `ccnt` (conversions), `crto` (conversion rate), `convAmt` (conversion value), `ror` (ROAS), `cpConv` (cost per conversion), `avgRnk` (avg rank)
 
@@ -376,6 +396,7 @@ src/
     reports.ts              # Master report tools
   utils/
     fetchWithAuth.ts        # Authenticated HTTP client (HMAC-SHA256)
+    reportJob.ts            # Async report poll/download/TSV-parse helpers
 ```
 
 ## Requirements
