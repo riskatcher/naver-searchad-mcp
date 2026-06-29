@@ -13,3 +13,10 @@ export interface Channel {
 export interface GetChannelArgs {
   channelId: string;
 }
+
+export interface CreateChannelArgs {
+  channelTp: string;
+  name?: string;
+  channelKey?: string;
+  url?: string;
+}

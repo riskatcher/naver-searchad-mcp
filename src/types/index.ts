@@ -11,3 +11,5 @@ export * from "./ad-extensions.js";
 export * from "./negative-keywords.js";
 export * from "./labels.js";
 export * from "./misc.js";
+export * from "./reports.js";
+export * from "./restricted-keywords.js";

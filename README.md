@@ -17,18 +17,20 @@ This project is a fork of [ND-SPACE/naver-searchad-mcp](https://github.com/ND-SP
 
 ## Features
 
-- **47 Tools** covering the full Naver SearchAd API
+- **59 Tools** covering the full Naver SearchAd API
 - **Campaign Management**: List, get, create, update, and delete campaigns
-- **Ad Group Management**: Full CRUD for ad groups
+- **Ad Group Management**: Full CRUD for ad groups, plus targeting inspection
 - **Ad/Creative Management**: List, get, create, update, and delete ads
 - **Keyword Management**: Full CRUD for keywords
 - **Negative Keywords**: Manage negative keywords at campaign or ad group level
-- **Ad Extensions**: Manage sitelinks, callouts, and other ad extensions
+- **Restricted Keywords**: Manage Keyword Plus restriction lists per ad group
+- **Ad Extensions**: Manage sitelinks, callouts, and other ad extensions (create, update, delete)
 - **Keyword Tool**: Get keyword suggestions, search volume, and bid estimates
-- **Performance Statistics**: Detailed stats with flexible date ranges, breakdowns, and async reports
+- **Performance Statistics**: Detailed stats with flexible date ranges, breakdowns, and async stat reports
+- **Master Reports**: Bulk entity (campaign/adgroup/keyword/ad/…) snapshots and delta exports
 - **Bizmoney/Budget**: Check account balance, transaction history, and cost breakdowns
 - **Labels**: Organize campaigns, ad groups, and other entities
-- **Business Channels**: List and inspect business channels
+- **Business Channels**: List, inspect, and create business channels
 - **Account & Quality**: Member info, keyword quality index, IP exclusions
 - **Permission Modes**: `--ro`, `--rw`, `--rwd` flags to control access (read-only by default)
 - **TypeScript**: Fully typed with modular architecture
@@ -63,9 +65,9 @@ The server supports three permission modes to protect against accidental destruc
 
 | Flag | Mode | Tools | Description |
 |------|------|-------|-------------|
-| `--ro` | Read-only | 26 | List, get, stats, and download operations only (default) |
-| `--rw` | Read-write | 39 | Adds create and update operations |
-| `--rwd` | Read-write-delete | 47 | Full access including delete operations |
+| `--ro` | Read-only | 31 | List, get, stats, and download operations only (default) |
+| `--rw` | Read-write | 48 | Adds create and update operations |
+| `--rwd` | Read-write-delete | 59 | Full access including delete operations |
 
 Pass the flag as a CLI argument:
 
@@ -125,7 +127,7 @@ Add to your Claude Code settings:
 }
 ```
 
-## Available Tools (47)
+## Available Tools (59)
 
 ### Campaign Tools
 
@@ -145,6 +147,7 @@ Add to your Claude Code settings:
 | `get_adgroup` | read | Get details of a specific ad group |
 | `create_adgroup` | write | Create a new ad group in a campaign |
 | `update_adgroup` | write | Update an ad group (bid, budget, pause/enable) |
+| `get_adgroup_targets` | read | Get targeting settings (schedule, device, region, audience) for an ad group |
 | `delete_adgroup` | delete | Delete an ad group |
 
 ### Ad (Creative) Tools
@@ -175,12 +178,23 @@ Add to your Claude Code settings:
 | `create_negative_keywords` | write | Add negative keywords (EXACT or PHRASE match) |
 | `delete_negative_keywords` | delete | Delete negative keywords by IDs |
 
+### Restricted Keyword Tools
+
+Restricted keywords limit automatic Keyword Plus expansion (distinct from negative keywords).
+
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `list_restricted_keywords` | read | List restricted keywords for an ad group |
+| `create_restricted_keywords` | write | Add restricted keywords to an ad group |
+| `delete_restricted_keywords` | delete | Delete restricted keywords by IDs |
+
 ### Ad Extension Tools
 
 | Tool | Permission | Description |
 |------|-----------|-------------|
 | `list_ad_extensions` | read | List ad extensions for an ad group |
 | `create_ad_extension` | write | Create an ad extension (sitelink, callout, etc.) |
+| `update_ad_extension` | write | Update an ad extension (values, schedule, pause/enable) |
 | `delete_ad_extension` | delete | Delete an ad extension |
 
 ### Statistics Tools
@@ -189,9 +203,22 @@ Add to your Claude Code settings:
 |------|-----------|-------------|
 | `get_stats` | read | Get performance stats (impressions, clicks, cost, conversions, etc.) |
 | `get_campaign_stats` | read | Get stats for all active campaigns with campaign details |
-| `create_stat_report` | write | Create an async stat report job |
-| `get_stat_report` | read | Check status of an async report job |
+| `create_stat_report` | write | Create an async stat (performance) report job for a single date |
+| `get_stat_report` | read | Check status of an async stat report job |
 | `download_stat_report` | read | Download a completed stat report |
+| `list_stat_reports` | read | List all stat report jobs and their status/download URLs |
+| `delete_stat_report` | delete | Delete a stat report job to free up the per-account slot |
+
+### Master Report Tools
+
+Master reports are bulk TSV snapshots of account **entities** (campaigns, ad groups, keywords, ads, etc.), as opposed to performance statistics. Valid `item` values include `Campaign`, `Adgroup`, `Keyword`, `Ad`, `AdExtension`, `BusinessChannel`, `Label`, `Qi`, and more.
+
+| Tool | Permission | Description |
+|------|-----------|-------------|
+| `create_master_report` | write | Create a full snapshot or delta master report job |
+| `get_master_report` | read | Check status of a master report job and get its download URL |
+| `list_master_reports` | read | List all master report jobs |
+| `delete_master_report` | delete | Delete a master report job |
 
 **Available metrics:** `impCnt` (impressions), `clkCnt` (clicks), `salesAmt` (cost), `ctr` (CTR), `cpc` (CPC), `ccnt` (conversions), `crto` (conversion rate), `convAmt` (conversion value), `ror` (ROAS), `cpConv` (cost per conversion), `avgRnk` (avg rank)
 
@@ -221,6 +248,7 @@ Add to your Claude Code settings:
 |------|-----------|-------------|
 | `list_channels` | read | List all business channels |
 | `get_channel` | read | Get details of a specific channel |
+| `create_channel` | write | Create a business channel (site, phone, etc.) |
 
 ### Label Tools
 
@@ -272,6 +300,13 @@ Add to your Claude Code settings:
 "Show me the click-through rate for my keywords in the last week"
 ```
 
+## Roadmap
+
+A higher-level **reporting & dashboard layer** (built on the stat-report and
+master-report tools) is planned — account overviews, KPI-threshold alerts, and
+optional Excel/HTML artifacts. See
+[`docs/REPORTING_FEATURE_PLAN.md`](docs/REPORTING_FEATURE_PLAN.md).
+
 ## Getting API Credentials
 
 1. Log in to [Naver SearchAd](https://searchad.naver.com/)
@@ -320,8 +355,10 @@ src/
     keyword-tool.ts         # Keyword suggestion & estimate types
     ad-extensions.ts        # Ad extension types
     negative-keywords.ts    # Negative keyword types
+    restricted-keywords.ts  # Restricted (Keyword Plus) keyword types
     labels.ts               # Label types
     misc.ts                 # Member, quality index, IP exclusion types
+    reports.ts              # Master report types
   tools/
     campaigns.ts            # Campaign tool definitions & handlers
     adgroups.ts             # Ad group tools
@@ -333,8 +370,10 @@ src/
     keyword-tool.ts         # Keyword research & bid estimate tools
     ad-extensions.ts        # Ad extension tools
     negative-keywords.ts    # Negative keyword tools
+    restricted-keywords.ts  # Restricted (Keyword Plus) keyword tools
     labels.ts               # Label tools
     misc.ts                 # Member, quality index, IP exclusion tools
+    reports.ts              # Master report tools
   utils/
     fetchWithAuth.ts        # Authenticated HTTP client (HMAC-SHA256)
 ```

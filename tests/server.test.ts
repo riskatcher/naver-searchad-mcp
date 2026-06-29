@@ -11,6 +11,8 @@ import * as adExtensionTools from "../src/tools/ad-extensions.js";
 import * as negativeKeywordTools from "../src/tools/negative-keywords.js";
 import * as labelTools from "../src/tools/labels.js";
 import * as miscTools from "../src/tools/misc.js";
+import * as reportTools from "../src/tools/reports.js";
+import * as restrictedKeywordTools from "../src/tools/restricted-keywords.js";
 import type { ToolModule, AccessLevel } from "../src/types/common.js";
 import { PERMISSION_ALLOWED } from "../src/types/common.js";
 
@@ -27,14 +29,16 @@ const toolModules: ToolModule[] = [
   negativeKeywordTools,
   labelTools,
   miscTools,
+  reportTools,
+  restrictedKeywordTools,
 ];
 
 const allTools = toolModules.flatMap((m) => m.toolDefinitions);
 
 describe("MCP Server Tools", () => {
   describe("Tool definitions", () => {
-    it("should have 47 tools defined", () => {
-      expect(allTools).toHaveLength(47);
+    it("should have 59 tools defined", () => {
+      expect(allTools).toHaveLength(59);
     });
 
     it("should have unique tool names", () => {
@@ -93,11 +97,16 @@ describe("MCP Server Tools", () => {
     });
   });
 
-  describe("Ad group tools (5)", () => {
+  describe("Ad group tools (6)", () => {
     const tools = adgroupTools.toolDefinitions;
 
-    it("should have 5 adgroup tools", () => {
-      expect(tools).toHaveLength(5);
+    it("should have 6 adgroup tools", () => {
+      expect(tools).toHaveLength(6);
+    });
+
+    it("get_adgroup_targets should require adgroupId", () => {
+      const tool = tools.find((t) => t.name === "get_adgroup_targets");
+      expect(tool?.inputSchema.required).toContain("adgroupId");
     });
 
     it("list_adgroups should not require parameters", () => {
@@ -187,11 +196,11 @@ describe("MCP Server Tools", () => {
     });
   });
 
-  describe("Stats tools (5)", () => {
+  describe("Stats tools (7)", () => {
     const tools = statsTools.toolDefinitions;
 
-    it("should have 5 stats tools", () => {
-      expect(tools).toHaveLength(5);
+    it("should have 7 stats tools", () => {
+      expect(tools).toHaveLength(7);
     });
 
     it("get_stats should not require parameters in schema (validated at runtime)", () => {
@@ -203,13 +212,45 @@ describe("MCP Server Tools", () => {
       const tool = tools.find((t) => t.name === "create_stat_report");
       expect(tool?.inputSchema.required).toContain("reportTp");
     });
+
+    it("delete_stat_report should require reportJobId", () => {
+      const tool = tools.find((t) => t.name === "delete_stat_report");
+      expect(tool?.inputSchema.required).toContain("reportJobId");
+    });
   });
 
-  describe("Channel tools (2)", () => {
+  describe("Master report tools (4)", () => {
+    const tools = reportTools.toolDefinitions;
+
+    it("should have 4 master report tools", () => {
+      expect(tools).toHaveLength(4);
+    });
+
+    it("create_master_report should require item", () => {
+      const tool = tools.find((t) => t.name === "create_master_report");
+      expect(tool?.inputSchema.required).toContain("item");
+    });
+  });
+
+  describe("Restricted keyword tools (3)", () => {
+    const tools = restrictedKeywordTools.toolDefinitions;
+
+    it("should have 3 restricted keyword tools", () => {
+      expect(tools).toHaveLength(3);
+    });
+
+    it("create_restricted_keywords should require adgroupId and keywords", () => {
+      const tool = tools.find((t) => t.name === "create_restricted_keywords");
+      expect(tool?.inputSchema.required).toContain("adgroupId");
+      expect(tool?.inputSchema.required).toContain("keywords");
+    });
+  });
+
+  describe("Channel tools (3)", () => {
     const tools = channelTools.toolDefinitions;
 
-    it("should have 2 channel tools", () => {
-      expect(tools).toHaveLength(2);
+    it("should have 3 channel tools", () => {
+      expect(tools).toHaveLength(3);
     });
   });
 
@@ -234,11 +275,11 @@ describe("MCP Server Tools", () => {
     });
   });
 
-  describe("Ad extension tools (3)", () => {
+  describe("Ad extension tools (4)", () => {
     const tools = adExtensionTools.toolDefinitions;
 
-    it("should have 3 ad extension tools", () => {
-      expect(tools).toHaveLength(3);
+    it("should have 4 ad extension tools", () => {
+      expect(tools).toHaveLength(4);
     });
   });
 
@@ -275,26 +316,26 @@ describe("Permission modes", () => {
     });
   });
 
-  it("should have 26 read tools", () => {
+  it("should have 31 read tools", () => {
     const readTools = allTools.filter((t) => t.accessLevel === "read");
-    expect(readTools).toHaveLength(26);
+    expect(readTools).toHaveLength(31);
   });
 
-  it("should have 13 write tools", () => {
+  it("should have 17 write tools", () => {
     const writeTools = allTools.filter((t) => t.accessLevel === "write");
-    expect(writeTools).toHaveLength(13);
+    expect(writeTools).toHaveLength(17);
   });
 
-  it("should have 8 delete tools", () => {
+  it("should have 11 delete tools", () => {
     const deleteTools = allTools.filter((t) => t.accessLevel === "delete");
-    expect(deleteTools).toHaveLength(8);
+    expect(deleteTools).toHaveLength(11);
   });
 
   it("--ro mode should only allow read tools", () => {
     const allowed = PERMISSION_ALLOWED["ro"];
     expect(allowed).toEqual(["read"]);
     const filtered = allTools.filter((t) => allowed.includes(t.accessLevel));
-    expect(filtered).toHaveLength(26);
+    expect(filtered).toHaveLength(31);
     filtered.forEach((t) => expect(t.accessLevel).toBe("read"));
   });
 
@@ -302,7 +343,7 @@ describe("Permission modes", () => {
     const allowed = PERMISSION_ALLOWED["rw"];
     expect(allowed).toEqual(["read", "write"]);
     const filtered = allTools.filter((t) => allowed.includes(t.accessLevel));
-    expect(filtered).toHaveLength(39);
+    expect(filtered).toHaveLength(48);
     filtered.forEach((t) => expect(["read", "write"]).toContain(t.accessLevel));
   });
 
@@ -310,7 +351,7 @@ describe("Permission modes", () => {
     const allowed = PERMISSION_ALLOWED["rwd"];
     expect(allowed).toEqual(["read", "write", "delete"]);
     const filtered = allTools.filter((t) => allowed.includes(t.accessLevel));
-    expect(filtered).toHaveLength(47);
+    expect(filtered).toHaveLength(59);
   });
 
   it("delete tools should include all *delete* named tools", () => {

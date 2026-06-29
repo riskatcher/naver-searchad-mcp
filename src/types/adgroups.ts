@@ -43,3 +43,7 @@ export interface UpdateAdgroupArgs {
 export interface DeleteAdgroupArgs {
   adgroupId: string;
 }
+
+export interface GetAdgroupTargetsArgs {
+  adgroupId: string;
+}

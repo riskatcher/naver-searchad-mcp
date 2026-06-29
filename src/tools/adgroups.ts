@@ -8,6 +8,7 @@ import type {
   CreateAdgroupArgs,
   UpdateAdgroupArgs,
   DeleteAdgroupArgs,
+  GetAdgroupTargetsArgs,
 } from "../types/index.js";
 import { successResult, errorResult } from "../types/common.js";
 
@@ -117,6 +118,22 @@ export const toolDefinitions: ToolDefinition[] = [
     },
   },
   {
+    name: "get_adgroup_targets",
+    description:
+      "Get the targeting settings (schedule, device, region, audience, etc.) configured on an ad group.",
+    accessLevel: "read",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        adgroupId: {
+          type: "string",
+          description: "Ad group ID to read targeting for",
+        },
+      },
+      required: ["adgroupId"],
+    },
+  },
+  {
     name: "delete_adgroup",
     description: "Delete an ad group",
     accessLevel: "delete",
@@ -196,6 +213,15 @@ export async function handleTool(
         `/ncc/adgroups/${encodeURIComponent(typedArgs.adgroupId)}`,
         "PUT",
         body
+      );
+      return successResult(response.data);
+    }
+
+    case "get_adgroup_targets": {
+      const { adgroupId } = args as unknown as GetAdgroupTargetsArgs;
+      if (!adgroupId) return errorResult("adgroupId is required");
+      const response = await fetchWithAuth<unknown>(
+        `/ncc/adgroups/${encodeURIComponent(adgroupId)}/targets`
       );
       return successResult(response.data);
     }

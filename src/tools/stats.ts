@@ -10,6 +10,7 @@ import type {
   CreateStatReportArgs,
   GetStatReportArgs,
   DownloadStatReportArgs,
+  DeleteStatReportArgs,
 } from "../types/index.js";
 import { successResult, errorResult } from "../types/common.js";
 
@@ -91,29 +92,22 @@ export const toolDefinitions: ToolDefinition[] = [
     name: "create_stat_report",
     accessLevel: "write",
     description:
-      "Create an asynchronous stat report job. The report will be generated in the background and can be downloaded later.",
+      "Create an asynchronous stat (performance) report job for a single date. The report is generated in the background; poll get_stat_report for status and use the returned downloadUrl to fetch the TSV result. For entity master data (campaigns, ad groups, keywords) use create_master_report instead.",
     inputSchema: {
       type: "object" as const,
       properties: {
         reportTp: {
           type: "string",
           description:
-            "Report type (e.g., AD, AD_DETAIL, CAMPAIGN, ADGROUP, KEYWORD, AD_EXTENSION, MEDIA)",
+            "Stat report type. Valid values include: AD, AD_DETAIL, AD_CONVERSION, AD_CONVERSION_DETAIL, EXPKEYWORD, EXPKEYWORD_DETAIL, SHOPPINGKEYWORD, SHOPPINGKEYWORD_DETAIL, SHOPPINGKEYWORD_CONVERSION_DETAIL, SHOPPINGBRANDPRODUCT, SHOPPINGBRANDPRODUCT_CONVERSION, BRND_CONTRACT.",
         },
         statDt: {
           type: "string",
-          description: "Single date for the report (YYYY-MM-DD). Use this OR startDt/endDt.",
-        },
-        startDt: {
-          type: "string",
-          description: "Start date for the report range (YYYY-MM-DD)",
-        },
-        endDt: {
-          type: "string",
-          description: "End date for the report range (YYYY-MM-DD)",
+          description:
+            "Statistics date for the report (YYYY-MM-DD). The Naver stat-report API generates one report per day.",
         },
       },
-      required: ["reportTp"],
+      required: ["reportTp", "statDt"],
     },
   },
   {
@@ -141,6 +135,33 @@ export const toolDefinitions: ToolDefinition[] = [
         reportJobId: {
           type: "string",
           description: "Report job ID to download",
+        },
+      },
+      required: ["reportJobId"],
+    },
+  },
+  {
+    name: "list_stat_reports",
+    accessLevel: "read",
+    description:
+      "List all stat report jobs that currently exist for the account, with their status and download URLs.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: "delete_stat_report",
+    accessLevel: "delete",
+    description:
+      "Delete a stat report job. Naver retains a limited number of report jobs per account, so deleting old jobs frees up slots.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        reportJobId: {
+          type: "string",
+          description: "Report job ID to delete",
         },
       },
       required: ["reportJobId"],
@@ -284,18 +305,32 @@ export async function handleTool(
     case "create_stat_report": {
       const typedArgs = args as unknown as CreateStatReportArgs;
       if (!typedArgs.reportTp) return errorResult("reportTp is required");
+      if (!typedArgs.statDt) return errorResult("statDt is required");
 
       const body: Record<string, unknown> = {
         reportTp: typedArgs.reportTp,
+        statDt: typedArgs.statDt,
       };
-      if (typedArgs.statDt !== undefined) body.statDt = typedArgs.statDt;
-      if (typedArgs.startDt !== undefined) body.startDt = typedArgs.startDt;
-      if (typedArgs.endDt !== undefined) body.endDt = typedArgs.endDt;
 
       const response = await fetchWithAuth<unknown>(
         "/stat-reports",
         "POST",
         body
+      );
+      return successResult(response.data);
+    }
+
+    case "list_stat_reports": {
+      const response = await fetchWithAuth<unknown>("/stat-reports");
+      return successResult(response.data);
+    }
+
+    case "delete_stat_report": {
+      const { reportJobId } = args as unknown as DeleteStatReportArgs;
+      if (!reportJobId) return errorResult("reportJobId is required");
+      const response = await fetchWithAuth<unknown>(
+        `/stat-reports/${encodeURIComponent(reportJobId)}`,
+        "DELETE"
       );
       return successResult(response.data);
     }

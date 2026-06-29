@@ -23,6 +23,8 @@ import * as adExtensionTools from "./tools/ad-extensions.js";
 import * as negativeKeywordTools from "./tools/negative-keywords.js";
 import * as labelTools from "./tools/labels.js";
 import * as miscTools from "./tools/misc.js";
+import * as reportTools from "./tools/reports.js";
+import * as restrictedKeywordTools from "./tools/restricted-keywords.js";
 
 import type { ToolModule, PermissionMode } from "./types/common.js";
 import { PERMISSION_ALLOWED } from "./types/common.js";
@@ -53,6 +55,8 @@ const toolModules: ToolModule[] = [
   negativeKeywordTools,
   labelTools,
   miscTools,
+  reportTools,
+  restrictedKeywordTools,
 ];
 
 // Collect all tool definitions, filtered by permission mode

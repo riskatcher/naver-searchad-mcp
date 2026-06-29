@@ -52,9 +52,7 @@ export interface CampaignWithStats {
 
 export interface CreateStatReportArgs {
   reportTp: string;
-  statDt?: string;
-  startDt?: string;
-  endDt?: string;
+  statDt: string;
 }
 
 export interface GetStatReportArgs {
@@ -62,5 +60,9 @@ export interface GetStatReportArgs {
 }
 
 export interface DownloadStatReportArgs {
+  reportJobId: string;
+}
+
+export interface DeleteStatReportArgs {
   reportJobId: string;
 }

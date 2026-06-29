@@ -5,6 +5,7 @@ import type {
   AdExtension,
   ListAdExtensionsArgs,
   CreateAdExtensionArgs,
+  UpdateAdExtensionArgs,
   DeleteAdExtensionArgs,
 } from "../types/index.js";
 import { successResult, errorResult } from "../types/common.js";
@@ -48,6 +49,36 @@ export const toolDefinitions: ToolDefinition[] = [
         },
       },
       required: ["nccAdgroupId", "type", "values"],
+    },
+  },
+  {
+    name: "update_ad_extension",
+    description:
+      "Update an ad extension (its values and/or scheduling). Provide the fields to change.",
+    accessLevel: "write",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        adExtensionId: {
+          type: "string",
+          description: "Ad extension ID to update",
+        },
+        values: {
+          type: "object",
+          description:
+            "Updated extension values. Structure varies by extension type.",
+        },
+        adExtensionSchedule: {
+          type: "object",
+          description:
+            "Optional scheduling object controlling when the extension is shown.",
+        },
+        userLock: {
+          type: "boolean",
+          description: "Set true to pause the extension, false to enable it.",
+        },
+      },
+      required: ["adExtensionId"],
     },
   },
   {
@@ -97,6 +128,28 @@ export async function handleTool(
       const response = await fetchWithAuth<AdExtension>(
         "/ncc/ad-extensions",
         "POST",
+        body
+      );
+      return successResult(response.data);
+    }
+
+    case "update_ad_extension": {
+      const typedArgs = args as unknown as UpdateAdExtensionArgs;
+      if (!typedArgs.adExtensionId) {
+        return errorResult("adExtensionId is required");
+      }
+      const body: Record<string, unknown> = {
+        nccAdExtensionId: typedArgs.adExtensionId,
+      };
+      if (typedArgs.values !== undefined) body.values = typedArgs.values;
+      if (typedArgs.adExtensionSchedule !== undefined) {
+        body.adExtensionSchedule = typedArgs.adExtensionSchedule;
+      }
+      if (typedArgs.userLock !== undefined) body.userLock = typedArgs.userLock;
+
+      const response = await fetchWithAuth<AdExtension>(
+        `/ncc/ad-extensions/${encodeURIComponent(typedArgs.adExtensionId)}`,
+        "PUT",
         body
       );
       return successResult(response.data);

@@ -19,6 +19,13 @@ export interface CreateAdExtensionArgs {
   values: Record<string, unknown>;
 }
 
+export interface UpdateAdExtensionArgs {
+  adExtensionId: string;
+  values?: Record<string, unknown>;
+  adExtensionSchedule?: Record<string, unknown>;
+  userLock?: boolean;
+}
+
 export interface DeleteAdExtensionArgs {
   adExtensionId: string;
 }
