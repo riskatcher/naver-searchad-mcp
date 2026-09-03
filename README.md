@@ -15,6 +15,12 @@ An MCP (Model Context Protocol) server for the Naver SearchAd API. Manage campai
 
 This project is a fork of [ND-SPACE/naver-searchad-mcp](https://github.com/ND-SPACE/naver-searchad-mcp), extended with additional features and improvements by [Packative](https://packative.com).
 
+### This fork
+
+`riskatcher/naver-searchad-mcp` tracks [packative/naver-searchad-mcp](https://github.com/packative/naver-searchad-mcp) and adds one thing: response-size control on `get_keyword_suggestions`.
+
+Naver's `/keywordstool` returns up to 1000 related keywords per call — around 320 KB for two seed keywords. Behind an MCP gateway that overruns the client's response budget, and in a web chat there is no file to spill it into. So the tool gained `limit` and `sortBy` arguments plus a `NAVER_KEYWORD_DEFAULT_LIMIT` default, and its response now reports `totalCount` / `returnedCount` / `truncated` so the caller can tell it received a slice. Nothing else diverges from upstream.
+
 ## Features
 
 - **47 Tools** covering the full Naver SearchAd API
@@ -56,6 +62,12 @@ The server requires the following environment variables:
 | `NAVER_API_KEY` | Your Naver SearchAd API key |
 | `NAVER_SIGN_KEY` | Your Naver SearchAd secret key for signing requests |
 | `NAVER_CUSTOMER_ID` | Your Naver advertiser customer ID |
+
+Optional:
+
+| Variable | Description |
+|----------|-------------|
+| `NAVER_KEYWORD_DEFAULT_LIMIT` | Default row cap for `get_keyword_suggestions` when the caller sends no `limit`. Defaults to `50`; set `0` to return every row. |
 
 ### Permission Modes
 
@@ -204,6 +216,19 @@ Add to your Claude Code settings:
 | Tool | Permission | Description |
 |------|-----------|-------------|
 | `get_keyword_suggestions` | read | Get keyword ideas with search volume, CTR, and competition data |
+
+`get_keyword_suggestions` takes `hintKeywords` (up to 5 seeds) plus three optional
+arguments:
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `showDetail` | `true` | Include the per-keyword volume, click, and CTR metrics |
+| `limit` | `NAVER_KEYWORD_DEFAULT_LIMIT`, else `50` | Rows to return. `0` returns every row |
+| `sortBy` | `total` | Order applied before the limit: `total` (PC + mobile monthly volume), `pc`, `mobile`, or `none` for Naver's own order |
+
+The response wraps `keywordList` with `totalCount`, `returnedCount`, `truncated`,
+and the `sortBy` that was applied, so a truncated result is never mistaken for
+the whole set.
 | `get_estimate_performance` | read | Estimate impressions, clicks, and cost at given bid amounts |
 | `get_estimate_median_bid` | read | Get median bid to appear on first page |
 

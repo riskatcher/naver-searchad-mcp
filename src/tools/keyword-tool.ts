@@ -3,6 +3,8 @@ import type {
   ToolDefinition,
   ToolResult,
   KeywordSuggestion,
+  KeywordSortBy,
+  ShapedKeywordList,
   EstimatePerformance,
   EstimateMedianBid,
   GetKeywordSuggestionsArgs,
@@ -10,6 +12,60 @@ import type {
   GetEstimateMedianBidArgs,
 } from "../types/index.js";
 import { successResult, errorResult } from "../types/common.js";
+
+const DEFAULT_KEYWORD_LIMIT = 50;
+
+/**
+ * Naver's /keywordstool returns up to 1000 related keywords per call, which
+ * overruns an MCP client's response budget. Cap it, defaulting from
+ * NAVER_KEYWORD_DEFAULT_LIMIT so a client that sends no argument stays small.
+ * An explicit 0 asks for every row.
+ */
+export function resolveKeywordLimit(limit: number | undefined): number {
+  if (typeof limit === "number" && Number.isFinite(limit) && limit >= 0) {
+    return Math.floor(limit);
+  }
+  const fromEnv = Number.parseInt(
+    process.env.NAVER_KEYWORD_DEFAULT_LIMIT ?? "",
+    10
+  );
+  return Number.isFinite(fromEnv) && fromEnv >= 0
+    ? fromEnv
+    : DEFAULT_KEYWORD_LIMIT;
+}
+
+/** Naver reports a volume under ten as the string "< 10". */
+function volume(value: unknown): number {
+  const parsed =
+    typeof value === "number" ? value : Number.parseFloat(String(value));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function sortValue(row: KeywordSuggestion, sortBy: KeywordSortBy): number {
+  if (sortBy === "pc") return volume(row.monthlyPcQcCnt);
+  if (sortBy === "mobile") return volume(row.monthlyMobileQcCnt);
+  return volume(row.monthlyPcQcCnt) + volume(row.monthlyMobileQcCnt);
+}
+
+export function shapeKeywordList(
+  rows: KeywordSuggestion[],
+  options: { limit: number; sortBy?: KeywordSortBy }
+): ShapedKeywordList {
+  const sortBy = options.sortBy ?? "total";
+  const ordered =
+    sortBy === "none"
+      ? [...rows]
+      : [...rows].sort((a, b) => sortValue(b, sortBy) - sortValue(a, sortBy));
+  const keywordList =
+    options.limit > 0 ? ordered.slice(0, options.limit) : ordered;
+  return {
+    keywordList,
+    totalCount: rows.length,
+    returnedCount: keywordList.length,
+    truncated: keywordList.length < rows.length,
+    sortBy,
+  };
+}
 
 export const toolDefinitions: ToolDefinition[] = [
   {
@@ -28,6 +84,17 @@ export const toolDefinitions: ToolDefinition[] = [
         showDetail: {
           type: "boolean",
           description: "Whether to show detailed metrics (default: true)",
+        },
+        limit: {
+          type: "number",
+          description:
+            "Maximum keywords to return. Naver returns up to 1000 per call, which overruns most response budgets. Defaults to NAVER_KEYWORD_DEFAULT_LIMIT (50 when unset). Pass 0 for every row.",
+        },
+        sortBy: {
+          type: "string",
+          enum: ["total", "pc", "mobile", "none"],
+          description:
+            "Order before the limit is applied: total (PC + mobile monthly volume, default), pc, mobile, or none to keep Naver's own order.",
         },
       },
       required: ["hintKeywords"],
@@ -111,7 +178,12 @@ export async function handleTool(
         undefined,
         params
       );
-      return successResult(response.data);
+      return successResult(
+        shapeKeywordList(response.data.keywordList ?? [], {
+          limit: resolveKeywordLimit(typedArgs.limit),
+          sortBy: typedArgs.sortBy,
+        })
+      );
     }
 
     case "get_estimate_performance": {

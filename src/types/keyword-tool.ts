@@ -24,9 +24,21 @@ export interface EstimateMedianBid {
   bid: number;
 }
 
+export type KeywordSortBy = "total" | "pc" | "mobile" | "none";
+
 export interface GetKeywordSuggestionsArgs {
   hintKeywords: string[];
   showDetail?: boolean;
+  limit?: number;
+  sortBy?: KeywordSortBy;
+}
+
+export interface ShapedKeywordList {
+  keywordList: KeywordSuggestion[];
+  totalCount: number;
+  returnedCount: number;
+  truncated: boolean;
+  sortBy: KeywordSortBy;
 }
 
 export interface GetEstimatePerformanceArgs {
